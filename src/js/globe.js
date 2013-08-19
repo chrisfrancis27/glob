@@ -23,7 +23,6 @@ DAT.Globe = function(container, colorFn) {
 
   var glowRGBA = '0.9, 0.4, 1.0, 1.0';
   var globeTexture = 'world.jpg';
-  window.spikeys = [];
 
   var Shaders = {
     'earth' : {
@@ -45,9 +44,35 @@ DAT.Globe = function(container, colorFn) {
         'varying vec2 vUv;',
         'void main() {',
           'vec3 diffuse = texture2D( texture, vUv ).xyz;',
-          'float intensity = 1.05 - dot( vNormal, vec3( 0.0, 0.0, 1.0 ) );',
+          'float intensity = 1.25 - dot( vNormal, vec3( 0.0, 0.0, 1.0 ) );',
           'vec3 atmosphere = vec3( 1.0, 1.0, 1.0 ) * pow( intensity, 3.0 );',
           'gl_FragColor = vec4( diffuse + atmosphere, 1 );',
+        '}'
+      ].join('\n')
+    },
+    'spikeys' : {
+      uniforms: {
+        'frequency': { type: 'f', value: 0 },
+        'volume': { type: 'f', value: 1 }
+      },
+      vertexShader: [
+        'varying vec3 vNormal;',
+        'varying vec2 vUv;',
+        'uniform float frequency;',
+        'uniform float volume;',
+        'void main() {',
+          'vec3 newPosition = vec3(position * (1.0 + volume / 2000.0));',
+          'gl_Position = projectionMatrix * modelViewMatrix * vec4( newPosition, 1.0 );',
+          'vNormal = normalize( normalMatrix * normal );',
+          'vUv = uv;',
+        '}'
+      ].join('\n'),
+      fragmentShader: [
+        'varying vec3 vNormal;',
+        'varying vec2 vUv;',
+        'void main() {',
+          'float intensity = 1.0;',
+          'gl_FragColor = vec4(1.0, 1.0, 1.0, 1.0) * intensity;',
         '}'
       ].join('\n')
     },
@@ -70,8 +95,10 @@ DAT.Globe = function(container, colorFn) {
     }
   };
 
-  var camera, scene, sceneAtmosphere, renderer, w, h;
-  var vector, mesh, atmosphere, point;
+  var camera, scene, sceneAtmosphere, sceneSpikeys, renderer, w, h;
+  var vector, mesh, atmosphere;
+
+  var earthUniforms, spikeyUniforms, atmosphereUniforms;
 
   var overRenderer;
 
@@ -90,139 +117,112 @@ DAT.Globe = function(container, colorFn) {
   var PI_HALF = Math.PI / 2;
 
   function init() {
-
-    container.style.color = '#fff';
-    container.style.font = '13px/20px Arial, sans-serif';
-
     var shader
-      , uniforms
       , material
+      , geometry
     ;
 
+    // Set stage defaults
+    container.style.color = '#fff';
+    container.style.font = '13px/20px Arial, sans-serif';
     w = container.offsetWidth || window.innerWidth;
     h = container.offsetHeight || window.innerHeight;
 
+
+    /********* CAMERA *********/
+    // Set up camera
     camera = new THREE.Camera(
         30, w / h, 1, 10000);
     camera.position.z = distance;
-
+    // Set camera vector
     vector = new THREE.Vector3();
 
+
+
+    /********* SCENES *********/
+    // Create Earth scene
     scene = new THREE.Scene();
+    // Create Atmospere scene
     sceneAtmosphere = new THREE.Scene();
+    // Create spikeys scene
+    sceneSpikeys = new THREE.Scene();
 
-    var geometry = new THREE.Sphere(200, 40, 30);
 
+
+    /********* EARTH *********/
+    // Create Earth shape
+    geometry = new THREE.Sphere(200, 40, 30);
+    // Create earthUniforms from Earth shader
     shader = Shaders['earth'];
-    uniforms = THREE.UniformsUtils.clone(shader.uniforms);
-
-    uniforms['texture'].texture = THREE.ImageUtils.loadTexture(imgDir+globeTexture);
-
+    earthUniforms = THREE.UniformsUtils.clone(shader.uniforms);
+    // Add Earth texture from image file
+    earthUniforms['texture'].texture = THREE.ImageUtils.loadTexture(imgDir+globeTexture);
+    // Create Earth material using Earth shader
     material = new THREE.MeshShaderMaterial({
-
-          uniforms: uniforms,
-          vertexShader: shader.vertexShader,
-          fragmentShader: shader.fragmentShader
-
-        });
-
+      uniforms: earthUniforms,
+      vertexShader: shader.vertexShader,
+      fragmentShader: shader.fragmentShader
+    });
+    // Create Earth mesh
     mesh = new THREE.Mesh(geometry, material);
     mesh.matrixAutoUpdate = false;
+    // Add Earth to the scene
     scene.addObject(mesh);
+    
 
+    /********* ATMOSPHERE *********/
+    // Create uniforms from Atmosphere shader
     shader = Shaders['atmosphere'];
-    uniforms = THREE.UniformsUtils.clone(shader.uniforms);
-
+    atmosphereUniforms = THREE.UniformsUtils.clone(shader.uniforms);
+    // Create Atmosphere material using Atmosphere shader
     material = new THREE.MeshShaderMaterial({
-
-          uniforms: uniforms,
-          vertexShader: shader.vertexShader,
-          fragmentShader: shader.fragmentShader
-
-        });
-
+      uniforms: atmosphereUniforms,
+      vertexShader: shader.vertexShader,
+      fragmentShader: shader.fragmentShader
+    });
+    // Create Atmosphere mesh
     mesh = new THREE.Mesh(geometry, material);
     mesh.scale.x = mesh.scale.y = mesh.scale.z = 1.1;
     mesh.flipSided = true;
     mesh.matrixAutoUpdate = false;
     mesh.updateMatrix();
+    // Add Atmosphere to its own scene
     sceneAtmosphere.addObject(mesh);
 
-    geometry = new THREE.Cube(0.75, 0.75, 1, 1, 1, 1, null, false, { px: true,
-          nx: true, py: true, ny: true, pz: false, nz: true});
 
-    for (var i = 0; i < geometry.vertices.length; i++) {
 
-      var vertex = geometry.vertices[i];
-      vertex.position.z += 0.5;
-
-    }
-
-    point = new THREE.Mesh(geometry);
-
+    /********* RENDERER *********/
     renderer = new THREE.WebGLRenderer({antialias: true});
     renderer.autoClear = false;
     renderer.setClearColorHex(0x000000, 0.0);
     renderer.setSize(w, h);
-
     renderer.domElement.style.position = 'absolute';
-
     container.appendChild(renderer.domElement);
 
+
+
+    /********* EVENT LISTENERS *********/
     container.addEventListener('mousedown', onMouseDown, false);
-
     container.addEventListener('mousewheel', onMouseWheel, false);
-
     document.addEventListener('keydown', onDocumentKeyDown, false);
-
     window.addEventListener('resize', onWindowResize, false);
-
     container.addEventListener('mouseover', function() {
       overRenderer = true;
     }, false);
-
     container.addEventListener('mouseout', function() {
       overRenderer = false;
     }, false);
   }
 
   addData = function(data, opts) {
-    var lat, lng, size, color, i, step, colorFnWrapper;
+    var lat, lng, size, color, i
+      , step = 3
+      , colorFnWrapper = function(data, i) { return colorFn(data[i+2]); }
+    ;
 
-    opts.animated = opts.animated || false;
-    this.is_animated = opts.animated;
-    opts.format = opts.format || 'magnitude'; // other option is 'legend'
-    console.log(opts.format);
-    if (opts.format === 'magnitude') {
-      step = 3;
-      colorFnWrapper = function(data, i) { return colorFn(data[i+2]); }
-    } else if (opts.format === 'legend') {
-      step = 4;
-      colorFnWrapper = function(data, i) { return colorFn(data[i+3]); }
-    } else {
-      throw('error: format not supported: '+opts.format);
-    }
-
-    if (opts.animated) {
-      if (this._baseGeometry === undefined) {
-        this._baseGeometry = new THREE.Geometry();
-        for (i = 0; i < data.length; i += step) {
-          lat = data[i];
-          lng = data[i + 1];
-//        size = data[i + 2];
-          color = colorFnWrapper(data,i);
-          size = 0;
-          addPoint(lat, lng, size, color, this._baseGeometry);
-        }
-      }
-      if(this._morphTargetId === undefined) {
-        this._morphTargetId = 0;
-      } else {
-        this._morphTargetId += 1;
-      }
-      opts.name = opts.name || 'morphTarget'+this._morphTargetId;
-    }
+    // Create new blank geometry object
     var subgeo = new THREE.Geometry();
+    // Parse data and pass it to addPoint()
     for (i = 0; i < data.length; i += step) {
       lat = data[i];
       lng = data[i + 1];
@@ -231,65 +231,63 @@ DAT.Globe = function(container, colorFn) {
       size = size*200;
       addPoint(lat, lng, size, color, subgeo);
     }
-    if (opts.animated) {
-      this._baseGeometry.morphTargets.push({'name': opts.name, vertices: subgeo.vertices});
-    } else {
-      this._baseGeometry = subgeo;
-    }
 
+    // Set base geometry to object created above
+    this._baseGeometry = subgeo;
   };
 
   function createPoints() {
     if (this._baseGeometry !== undefined) {
-      if (this.is_animated === false) {
-        this.points = new THREE.Mesh(this._baseGeometry, new THREE.MeshBasicMaterial({
-              color: 0xffffff,
-              vertexColors: THREE.FaceColors,
-              morphTargets: false
-            }));
-      } else {
-        if (this._baseGeometry.morphTargets.length < 8) {
-          console.log('t l',this._baseGeometry.morphTargets.length);
-          var padding = 8-this._baseGeometry.morphTargets.length;
-          console.log('padding', padding);
-          for(var i=0; i<=padding; i++) {
-            console.log('padding',i);
-            this._baseGeometry.morphTargets.push({'name': 'morphPadding'+i, vertices: this._baseGeometry.vertices});
-          }
-        }
-        this.points = new THREE.Mesh(this._baseGeometry, new THREE.MeshBasicMaterial({
-              color: 0xffffff,
-              vertexColors: THREE.FaceColors,
-              morphTargets: true
-            }));
-      }
-      scene.addObject(this.points);
+      // Create spikeyUniforms from Spikeys shader
+      var shader = Shaders['spikeys'];
+      spikeyUniforms = THREE.UniformsUtils.clone(shader.uniforms);
+      // Create mesh from all the spikes
+      this.points = new THREE.Mesh(this._baseGeometry, new THREE.MeshShaderMaterial({
+        uniforms: spikeyUniforms,
+        vertexShader: shader.vertexShader,
+        fragmentShader: shader.fragmentShader
+      }));
+      sceneSpikeys.addObject(this.points);
     }
   }
 
   function addPoint(lat, lng, size, color, subgeo) {
+    // Fancy maths
     var phi = (90 - lat) * Math.PI / 180;
     var theta = (180 - lng) * Math.PI / 180;
 
-    point.position.x = 200 * Math.sin(phi) * Math.cos(theta);
-    point.position.y = 200 * Math.cos(phi);
-    point.position.z = 200 * Math.sin(phi) * Math.sin(theta);
-
-    point.lookAt(mesh.position);
-
-    point.scale.z = -size;
-    point.updateMatrix();
-
-    var i;
-    for (i = 0; i < point.geometry.faces.length; i++) {
-
-      point.geometry.faces[i].color = color;
-
+    // Create Spike geometry
+    var geometry = new THREE.Cube(0.75, 0.75, 1, 1, 1, 1, null, false, { px: true,
+          nx: true, py: true, ny: true, pz: false, nz: true});
+    for (var i = 0; i < geometry.vertices.length; i++) {
+      var vertex = geometry.vertices[i];
+      vertex.position.z += 0.5;
     }
 
-    GeometryUtils.merge(subgeo, point);
+    // Create spike mesh
+    var spikey = new THREE.Mesh(geometry);
 
-    window.spikeys.push(point);
+    // Set position
+    spikey.position.x = Math.sin(phi) * Math.cos(theta);
+    spikey.position.y = Math.cos(phi);
+    spikey.position.z = Math.sin(phi) * Math.sin(theta);
+
+    // Orient it towards centre of Earth
+    spikey.lookAt(mesh.position);
+
+    // Scale it according to data (negative because it's pointing TOWARDS the center)
+    spikey.scale.z = -200 -size;
+
+    // Signal THREE.js to redraw
+    spikey.updateMatrix();
+
+    var i;
+    for (i = 0; i < spikey.geometry.faces.length; i++) {
+      spikey.geometry.faces[i].color = color;
+    }
+
+    // Merge into geometry object passed in earlier
+    GeometryUtils.merge(subgeo, spikey);
   }
 
   function onMouseDown(event) {
@@ -356,7 +354,6 @@ DAT.Globe = function(container, colorFn) {
   }
 
   function onWindowResize( event ) {
-    console.log('resize');
     camera.aspect = window.innerWidth / window.innerHeight;
     camera.updateProjectionMatrix();
     renderer.setSize( window.innerWidth, window.innerHeight );
@@ -369,6 +366,18 @@ DAT.Globe = function(container, colorFn) {
   }
 
   function animate() {
+    
+    if(typeof window.freqArray === 'object' && window.freqArray.length > 0) {
+      for (var i = 0; i < window.freqArray.length; i++) {
+        var freq = 256 - i
+          , vol = window.freqArray[i]
+        ;
+        spikeyUniforms.frequency.value = 1;
+        //spikeyUniforms.volume.value = vol * window.boost;
+        spikeyUniforms.volume.value = window.boost;
+      }
+    }
+
     requestAnimationFrame(animate);
     render();
   }
@@ -386,56 +395,17 @@ DAT.Globe = function(container, colorFn) {
 
     vector.copy(camera.position);
 
-    if(typeof window.freqArray === 'object' && window.freqArray.length > 0) {
-      var k = 0;
-      for(var i = 0; i < window.spikeys.length; i++) {
-        if (window.spikeys[i]) {
-          var scale = (window.freqArray[k] + window.boost) / 30;
-          window.spikeys[i].scale.z = (scale < 1 ? 1 : scale);
-          k += (k < window.freqArray.length ? 1 : 0);
-        }
-      }
-    }
 
     renderer.clear();
     renderer.render(scene, camera);
+    renderer.render(sceneSpikeys, camera);
     renderer.render(sceneAtmosphere, camera);
-
 
   }
 
   init();
+
   this.animate = animate;
-
-
-  this.__defineGetter__('time', function() {
-    return this._time || 0;
-  });
-
-  this.__defineSetter__('time', function(t) {
-    var validMorphs = [];
-    var morphDict = this.points.morphTargetDictionary;
-    for(var k in morphDict) {
-      if(k.indexOf('morphPadding') < 0) {
-        validMorphs.push(morphDict[k]);
-      }
-    }
-    validMorphs.sort();
-    var l = validMorphs.length-1;
-    var scaledt = t*l+1;
-    var index = Math.floor(scaledt);
-    for (i=0;i<validMorphs.length;i++) {
-      this.points.morphTargetInfluences[validMorphs[i]] = 0;
-    }
-    var lastIndex = index - 1;
-    var leftover = scaledt - index;
-    if (lastIndex >= 0) {
-      this.points.morphTargetInfluences[lastIndex] = 1 - leftover;
-    }
-    this.points.morphTargetInfluences[index] = leftover;
-    this._time = t;
-  });
-
   this.addData = addData;
   this.createPoints = createPoints;
   this.renderer = renderer;
