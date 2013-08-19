@@ -70,6 +70,7 @@
   <script type="text/javascript">
 
     $('#audioPlay').removeAttr('disabled').on('click', function(e_click) {
+      $(this).attr('disabled','disabled');
       window.AudioContext = window.AudioContext || window.webkitAudioContext;
       var context = new AudioContext()
         , request = new XMLHttpRequest()
@@ -80,7 +81,6 @@
       ;
 
       window.boost = 0;
-      window.foo = false;
       request.open('GET', '/daftpunk.ogg', true);
       request.responseType = 'arraybuffer';
 

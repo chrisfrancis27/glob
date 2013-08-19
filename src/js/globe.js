@@ -52,27 +52,36 @@ DAT.Globe = function(container, colorFn) {
     },
     'spikeys' : {
       uniforms: {
-        'frequency': { type: 'f', value: 0 },
+        'frequency': { type: 'f', value: 1 },
         'volume': { type: 'f', value: 1 }
       },
       vertexShader: [
         'varying vec3 vNormal;',
         'varying vec2 vUv;',
+        'varying vec4 vPos;',
+        'varying vec3 vOrigin;',
         'uniform float frequency;',
         'uniform float volume;',
+        'attribute vec3 origin;',
         'void main() {',
-          'vec3 newPosition = vec3(position * (1.0 + volume / 2000.0));',
+          'vec3 newPosition = vec3(position * (1.0 + volume / 1000.0));',
           'gl_Position = projectionMatrix * modelViewMatrix * vec4( newPosition, 1.0 );',
           'vNormal = normalize( normalMatrix * normal );',
           'vUv = uv;',
+          'vPos = gl_Position;',
+          'vOrigin = origin;',
         '}'
       ].join('\n'),
       fragmentShader: [
         'varying vec3 vNormal;',
         'varying vec2 vUv;',
+        'varying vec4 vPos;',
+        'varying vec3 vOrigin;',
         'void main() {',
-          'float intensity = 1.0;',
-          'gl_FragColor = vec4(1.0, 1.0, 1.0, 1.0) * intensity;',
+          'float intensity = 2.0 - vPos.z * 0.0013;',
+          'float green = 200.0 - (abs(distance(vPos.xyz, vOrigin)) / 200.0);',
+          'float red = distance(vPos.xyz, vec3(0,0,0));',
+          'gl_FragColor = vec4(0.1, green, 0.1, 1.0) * intensity;',
         '}'
       ].join('\n')
     },
@@ -95,8 +104,14 @@ DAT.Globe = function(container, colorFn) {
     }
   };
 
+    // phi = (90 - lat) * Math.PI / 180;
+    // theta = (180 - lng) * Math.PI / 180;
+    // x = Math.sin(phi) * Math.cos(theta);
+    // y = Math.cos(phi);
+    // z = Math.sin(phi) * Math.sin(theta);
+
   var camera, scene, sceneAtmosphere, sceneSpikeys, renderer, w, h;
-  var vector, mesh, atmosphere;
+  var vector, mesh, atmosphere, origin, originMesh;
 
   var earthUniforms, spikeyUniforms, atmosphereUniforms;
 
@@ -241,12 +256,27 @@ DAT.Globe = function(container, colorFn) {
       // Create spikeyUniforms from Spikeys shader
       var shader = Shaders['spikeys'];
       spikeyUniforms = THREE.UniformsUtils.clone(shader.uniforms);
+
+      var attrs = {
+        'origin': { type: 'vec3', value: [] },
+      };
+      origin = new THREE.Geometry();
+      originMesh = new THREE.Mesh(origin);
+      sceneSpikeys.addObject(originMesh);
+
       // Create mesh from all the spikes
       this.points = new THREE.Mesh(this._baseGeometry, new THREE.MeshShaderMaterial({
         uniforms: spikeyUniforms,
+        attributes: attrs,
         vertexShader: shader.vertexShader,
         fragmentShader: shader.fragmentShader
       }));
+
+
+      for (var i = 0; i < this._baseGeometry.vertices.length; i++) {
+        attrs.origin.value.push(origin.xyz);
+      }
+
       sceneSpikeys.addObject(this.points);
     }
   }
@@ -372,7 +402,7 @@ DAT.Globe = function(container, colorFn) {
         var freq = 256 - i
           , vol = window.freqArray[i]
         ;
-        spikeyUniforms.frequency.value = 1;
+        spikeyUniforms.frequency.value = freq;
         //spikeyUniforms.volume.value = vol * window.boost;
         spikeyUniforms.volume.value = window.boost;
       }
@@ -397,8 +427,8 @@ DAT.Globe = function(container, colorFn) {
 
 
     renderer.clear();
-    renderer.render(scene, camera);
     renderer.render(sceneSpikeys, camera);
+    renderer.render(scene, camera);
     renderer.render(sceneAtmosphere, camera);
 
   }
