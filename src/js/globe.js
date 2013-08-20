@@ -21,9 +21,21 @@ DAT.Globe = function(container, colorFn) {
     return c;
   };
 
+  // RGBA color of world glow outline
   var glowRGBA = '0.9, 0.4, 1.0, 1.0';
+  // Which image to use for map texture
   var globeTexture = 'world.jpg';
 
+  // Shaders (crazy-ass complex GPU math calculations etc)
+  //  - Earth
+  //    - Vertex shader is pretty much the default minumum
+  //    - Frag shader adds the texture image and lighting effects
+  //  - Spikeys
+  //    - Vertex shader adjusts vertex positions based on average track volume
+  //    - Frag shader sets color green, intensity fades as it gets further away
+  //  - Atmosphere
+  //    - Vertex shader pretty standard like the 'earth' one
+  //    - Frag shader draws a pink fuzzy outline around the globe
   var Shaders = {
     'earth' : {
       uniforms: {
@@ -59,29 +71,23 @@ DAT.Globe = function(container, colorFn) {
         'varying vec3 vNormal;',
         'varying vec2 vUv;',
         'varying vec4 vPos;',
-        'varying vec3 vOrigin;',
         'uniform float frequency;',
         'uniform float volume;',
-        'attribute vec3 origin;',
         'void main() {',
           'vec3 newPosition = vec3(position * (1.0 + volume / 1000.0));',
           'gl_Position = projectionMatrix * modelViewMatrix * vec4( newPosition, 1.0 );',
           'vNormal = normalize( normalMatrix * normal );',
           'vUv = uv;',
           'vPos = gl_Position;',
-          'vOrigin = origin;',
         '}'
       ].join('\n'),
       fragmentShader: [
         'varying vec3 vNormal;',
         'varying vec2 vUv;',
         'varying vec4 vPos;',
-        'varying vec3 vOrigin;',
         'void main() {',
           'float intensity = 2.0 - vPos.z * 0.0013;',
-          'float green = 200.0 - (abs(distance(vPos.xyz, vOrigin)) / 200.0);',
-          'float red = distance(vPos.xyz, vec3(0,0,0));',
-          'gl_FragColor = vec4(0.1, green, 0.1, 1.0) * intensity;',
+          'gl_FragColor = vec4(0.1, 1.0, 0.1, 1.0) * intensity;',
         '}'
       ].join('\n')
     },
@@ -104,12 +110,7 @@ DAT.Globe = function(container, colorFn) {
     }
   };
 
-    // phi = (90 - lat) * Math.PI / 180;
-    // theta = (180 - lng) * Math.PI / 180;
-    // x = Math.sin(phi) * Math.cos(theta);
-    // y = Math.cos(phi);
-    // z = Math.sin(phi) * Math.sin(theta);
-
+  // A metric fuck-tonne of variables
   var camera, scene, sceneAtmosphere, sceneSpikeys, renderer, w, h;
   var vector, mesh, atmosphere, origin, originMesh;
 
@@ -229,6 +230,7 @@ DAT.Globe = function(container, colorFn) {
     }, false);
   }
 
+  // Generate spikeys from JSON data
   addData = function(data, opts) {
     var lat, lng, size, color, i
       , step = 3
@@ -251,6 +253,7 @@ DAT.Globe = function(container, colorFn) {
     this._baseGeometry = subgeo;
   };
 
+  // Add all the points together as one mesh
   function createPoints() {
     if (this._baseGeometry !== undefined) {
       // Create spikeyUniforms from Spikeys shader
@@ -281,6 +284,7 @@ DAT.Globe = function(container, colorFn) {
     }
   }
 
+  // Add an individual point to the 3d "subgeo" mesh
   function addPoint(lat, lng, size, color, subgeo) {
     // Fancy maths
     var phi = (90 - lat) * Math.PI / 180;
@@ -397,14 +401,17 @@ DAT.Globe = function(container, colorFn) {
 
   function animate() {
     
+    // Loop through audio frequencies array
     if(typeof window.freqArray === 'object' && window.freqArray.length > 0) {
       for (var i = 0; i < window.freqArray.length; i++) {
         var freq = 256 - i
           , vol = window.freqArray[i]
         ;
+
+        // Send the frequency and volume variables to the shader pipeline
         spikeyUniforms.frequency.value = freq;
-        //spikeyUniforms.volume.value = vol * window.boost;
-        spikeyUniforms.volume.value = window.boost;
+        //spikeyUniforms.volume.value = vol * window.averageTrackVolume;
+        spikeyUniforms.volume.value = window.averageTrackVolume;
       }
     }
 

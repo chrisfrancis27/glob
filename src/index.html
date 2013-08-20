@@ -80,7 +80,7 @@
         , sourceJs
       ;
 
-      window.boost = 0;
+      window.averageTrackVolume = 0;
       request.open('GET', '/daftpunk.ogg', true);
       request.responseType = 'arraybuffer';
 
@@ -105,11 +105,11 @@
           sourceJs.onaudioprocess = function(e) {
             window.freqArray = new Uint8Array(analyser.frequencyBinCount);
             analyser.getByteFrequencyData(window.freqArray);
-            window.boost = 0;
+            window.averageTrackVolume = 0;
             for (var i = 0; i < window.freqArray.length; i++) {
-              window.boost += window.freqArray[i];
+              window.averageTrackVolume += window.freqArray[i];
             }
-            window.boost = window.boost / window.freqArray.length;
+            window.averageTrackVolume = window.averageTrackVolume / window.freqArray.length;
           };
 
           source.noteOn(0);
