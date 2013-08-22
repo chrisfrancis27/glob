@@ -17,7 +17,8 @@ DAT.Globe = function(container, colorFn) {
 
   colorFn = colorFn || function(x) {
     var c = new THREE.Color();
-    c.setHSV( ( 0.6 - ( x * 0.5 ) ), 1.0, 1.0 );
+    c.setHSV(Math.random(), 1.0,0.5);
+    //c.setHSV( ( 0.6 - ( x * 0.5 ) ), 1.0, 1.0 );
     return c;
   };
 
@@ -234,7 +235,7 @@ DAT.Globe = function(container, colorFn) {
   addData = function(data, opts) {
     var lat, lng, size, color, i
       , step = 3
-      , colorFnWrapper = function(data, i) { return colorFn(data[i+2]); }
+      , colorFnWrapper = function(data, i) { return colorFn(); }
     ;
 
     // Create new blank geometry object

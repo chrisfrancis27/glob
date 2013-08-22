@@ -67,56 +67,9 @@
   <script type="text/javascript" src="/lib/Three/Detector.js"></script>
   <script type="text/javascript" src="/lib/Tween.js"></script>
   <script type="text/javascript" src="/js/globe.js"></script>
+  <script type="text/javascript" src="/js/audio.js"></script>
   <script type="text/javascript">
 
-    $('#audioPlay').removeAttr('disabled').on('click', function(e_click) {
-      $(this).attr('disabled','disabled');
-      window.AudioContext = window.AudioContext || window.webkitAudioContext;
-      var context = new AudioContext()
-        , request = new XMLHttpRequest()
-        , audioBuffer
-        , source
-        , analyser
-        , sourceJs
-      ;
-
-      window.averageTrackVolume = 0;
-      request.open('GET', '/daftpunk.ogg', true);
-      request.responseType = 'arraybuffer';
-
-      // Decode asynchronously
-      request.onload = function() {
-        context.decodeAudioData(request.response, function(buffer) {
-          sourceJs = context.createJavaScriptNode(2048);
-          sourceJs.buffer = buffer;
-          sourceJs.connect(context.destination);
-          analyser = context.createAnalyser();
-          analyser.smoothingTimeConstant = 0.6;
-          analyser.fftSize = 512;
-
-          source = context.createBufferSource();
-          source.buffer = buffer;
-          source.loop = false;
-
-          source.connect(analyser);
-          analyser.connect(sourceJs);
-          source.connect(context.destination);
-
-          sourceJs.onaudioprocess = function(e) {
-            window.freqArray = new Uint8Array(analyser.frequencyBinCount);
-            analyser.getByteFrequencyData(window.freqArray);
-            window.averageTrackVolume = 0;
-            for (var i = 0; i < window.freqArray.length; i++) {
-              window.averageTrackVolume += window.freqArray[i];
-            }
-            window.averageTrackVolume = window.averageTrackVolume / window.freqArray.length;
-          };
-
-          source.noteOn(0);
-        });
-      }
-      request.send();
-    });
 
     if(!Detector.webgl){
       Detector.addGetWebGLMessage();

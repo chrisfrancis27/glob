@@ -1,0 +1,101 @@
+<!DOCTYPE HTML>
+<html lang="en">
+  <head>
+    <title>WebGL Globe</title>
+    <meta charset="utf-8">
+    <style type="text/css">
+      html {
+        height: 100%;
+      }
+      body {
+        margin: 0;
+        padding: 0;
+        color: #bbb;
+        font-family: sans-serif;
+        font-size: 13px;
+        line-height: 20px;
+        height: 100%;
+      }
+      #info {
+
+        font-size: 11px;
+        position: absolute;
+        bottom: 5px;
+        background-color: rgba(0,0,0,0.8);
+        border-radius: 3px;
+        right: 10px;
+        padding: 10px;
+
+      }
+
+      a {
+        color: #aaa;
+        text-decoration: none;
+      }
+      a:hover {
+        text-decoration: underline;
+      }
+
+      .bull {
+        padding: 0 5px;
+        color: #555;
+      }
+
+      #audio {
+        position: relative;
+        top: 40px;
+        left: 20px;
+      }
+      .play {
+          display:inline-block;
+          margin:5px;
+          width: 24px;
+          height: 32px;
+          background-repeat: no-repeat;
+          background-image: url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABgAAAAgCAYAAAAIXrg4AAAAGXRFWHRTb2Z0d2FyZQBBZG9iZSBJbWFnZVJlYWR5ccllPAAAAMZJREFUeNq0lt0NgzAMhIPlfWAR1BXYpDBSxSCFiYr70CqKUH6cO0t+SEC++xxkIvP8eFuOgRRiOVkeJvJkCAxW+BOtD8tl318nkiAOOE1KENA0knkGockRQGik8j03TS2Bm0YcbW2i8RA00UjnZ16k6SUo0ghw7NzSIAluaSRw4k/DEqCcQdqiyVq0KaH4+i38WyjjYONNZbhGChRHhTJc9wo0jWtluPYIuH+ZynBdKwC5tijDdU4AfnVUhutUAO46jkuAAQD+jXZOTODXVwAAAABJRU5ErkJggg==);
+          text-indent:-200px;
+      }
+      .stop {
+          display:inline-block;
+          margin:5px;
+          width: 32px;
+          height: 32px;
+          background-repeat: no-repeat;
+          background-image: url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAIAAAD8GO2jAAAAGXRFWHRTb2Z0d2FyZQBBZG9iZSBJbWFnZVJlYWR5ccllPAAAACxJREFUeNrszUERAAAEADD0c/q3UYLfVmDZPfGp4plAIBAIBAKBQCC4sgIMAJggASlttpE8AAAAAElFTkSuQmCC);
+          text-indent:-200px;
+      }
+      p:hover {
+          cursor:pointer;
+          opacity:0.8;
+      }
+
+
+
+    </style>
+  </head>
+  <body>
+
+  <p class="play">Play</p>
+  <p class="stop">Stop</p>
+
+  <p>Volume</p>
+  <input class="volumeControl" type="range" min="-2" max="1" step="0.1" value="1">
+
+  <p>Low Shelf Control</p>
+  <input class="lowShelfControl" type="range" min="-10" max="10" step="0.1" value="0">
+
+  <p>Peaking Control</p>
+  <input class="peakingControl" type="range" min="-10" max="10" step="0.1" value="0">
+
+  <p>High Shelf Control</p>
+  <input class="highShelfControl" type="range" min="-10" max="10" step="0.1" value="0">
+
+  <div id="container"></div>
+
+
+  <script type="text/javascript" src="/lib/jquery.js"></script>
+  <script type="text/javascript" src="/js/audiosplitter.js"></script>
+
+  </body>
+
+</html>
